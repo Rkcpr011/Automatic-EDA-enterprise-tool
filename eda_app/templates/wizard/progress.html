@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Building report{% endblock %}
+{% block content %}
+{% include "wizard/_steps.html" %}
+<div class="row justify-content-center"><div class="col-lg-6">
+<div class="card shadow-sm"><div class="card-body p-4 text-center">
+  <div id="working">
+    <div class="spinner-border text-primary mb-3"></div>
+    <h1 class="h5">Building your report</h1>
+    <p class="text-muted mb-3" id="msg">Starting…</p>
+    <div class="progress mb-2" style="height:14px"><div class="progress-bar progress-bar-striped progress-bar-animated" id="bar" style="width:0%"></div></div>
+    <p class="small text-muted mb-0">Large files can take a few minutes. You can leave this page; the report will appear on the dashboard.</p>
+  </div>
+  <div id="failed" class="d-none">
+    <i class="bi bi-exclamation-octagon text-danger fs-1"></i>
+    <h1 class="h5 mt-2">Report generation failed</h1>
+    <p class="text-danger" id="err"></p>
+    <a class="btn btn-primary" href="{{ url_for('wizard_outliers', job_id=entry.id) }}">Back to outlier step</a>
+    <a class="btn btn-light" href="{{ url_for('index') }}">Dashboard</a>
+  </div>
+</div></div></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+  var url = "{{ url_for('wizard_status', job_id=entry.id) }}";
+  function poll() {
+    fetch(url).then(function (r) { return r.json(); }).then(function (d) {
+      document.getElementById('bar').style.width = (d.progress || 0) + '%';
+      document.getElementById('msg').textContent = d.message || '';
+      if (d.status === 'completed') { window.location = d.report_url; return; }
+      if (d.status === 'failed') {
+        document.getElementById('working').classList.add('d-none');
+        document.getElementById('failed').classList.remove('d-none');
+        document.getElementById('err').textContent = d.error || 'Unknown error';
+        return;
+      }
+      setTimeout(poll, 1500);
+    }).catch(function () { setTimeout(poll, 3000); });
+  }
+  poll();
+</script>
+{% endblock %}

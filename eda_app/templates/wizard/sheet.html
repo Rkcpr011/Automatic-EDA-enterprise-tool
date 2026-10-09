@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Choose sheet{% endblock %}
+{% block content %}
+{% include "wizard/_steps.html" %}
+<div class="row justify-content-center"><div class="col-lg-7">
+<div class="card shadow-sm"><div class="card-body p-4">
+  <h1 class="h4">Choose a sheet</h1>
+  <p class="text-muted"><strong>{{ entry.filename }}</strong> contains {{ sheets|length }} sheets. Pick the one to analyse.</p>
+  <form method="post">
+    <div class="list-group mb-3">
+      {% for s in sheets %}
+      <label class="list-group-item d-flex align-items-center">
+        <input class="form-check-input me-3" type="radio" name="sheet" value="{{ s.name }}" required {% if selected == s.name or (not selected and loop.first) %}checked{% endif %}>
+        <span class="flex-grow-1 fw-medium">{{ s.name }}</span>
+        <span class="text-muted small">≈ {{ s.rows|num }} rows × {{ s.cols|num }} cols</span>
+      </label>
+      {% endfor %}
+    </div>
+    <button class="btn btn-primary">Continue <i class="bi bi-arrow-right"></i></button>
+  </form>
+</div></div></div></div>
+{% endblock %}

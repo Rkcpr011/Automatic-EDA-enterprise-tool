@@ -1,0 +1,647 @@
+==========================================================================================
+  AUTO EDA TOOL  -  HOW TO TEST IT LOCALLY AND HOW TO DEPLOY IT
+==========================================================================================
+
+Who is this for?  Anyone. You do not need to be a developer. Copy each command exactly,
+press Enter, and compare what you see with what this guide says you should see.
+
+What is in the package (auto_eda_app.zip)?
+  app.py ................ the web app
+  requirements.txt ...... list of Python packages it needs
+  make_sample_data.py ... creates practice datasets for testing
+  Dockerfile ............ used for the Docker deployment (Part 2, Option A)
+  eda/, templates/, static/ ... the app's inner parts (you never need to edit these)
+
+Contents
+  PART 1  Test it on your own computer ........ (about 15 minutes)
+  PART 2  Deploy it for your team ............. (choose ONE option: A, B, C or D)
+  PART 3  Keeping it running (backup, update, logs)
+  PART 4  Settings you can change
+  PART 5  Common problems and fixes
+
+
+==========================================================================================
+PART 1  -  TEST IT ON YOUR OWN COMPUTER
+==========================================================================================
+
+------------------------------------------------------------------------------------------
+STEP 1.  Install Python (one-time)
+------------------------------------------------------------------------------------------
+You need Python version 3.10, 3.11 or 3.12.  (The app was tested on 3.12.)
+
+Check whether you already have it. Open a terminal:
+  - Windows: press the Windows key, type  cmd , press Enter   (or use PowerShell)
+  - Mac:     press Cmd+Space, type  Terminal , press Enter
+  - Linux:   open your Terminal application
+
+Type this and press Enter:
+
+      python --version
+
+(On Mac/Linux, if that fails, try  python3 --version  and use  python3  wherever this
+guide says  python .)
+
+  - If you see something like  Python 3.12.3  -> good, go to Step 2.
+  - If you see an error or a version lower than 3.10 -> install Python:
+      * Windows / Mac: download from https://www.python.org/downloads/
+        WINDOWS USERS: on the first installer screen, TICK the box
+        "Add python.exe to PATH" before clicking Install. Then close and reopen the terminal.
+      * Ubuntu/Debian Linux:
+            sudo apt update
+            sudo apt install -y python3 python3-venv python3-pip
+
+------------------------------------------------------------------------------------------
+STEP 2.  Unzip the project
+------------------------------------------------------------------------------------------
+Right-click auto_eda_app.zip -> "Extract All" (Windows) or double-click it (Mac).
+Linux:   unzip auto_eda_app.zip
+
+You will get a folder called  eda_app . Remember where it is (for example your Desktop).
+
+------------------------------------------------------------------------------------------
+STEP 3.  Open a terminal INSIDE that folder
+------------------------------------------------------------------------------------------
+In the terminal, "cd" (change directory) into the folder. Examples:
+
+  Windows:   cd %USERPROFILE%\Desktop\eda_app
+  Mac/Linux: cd ~/Desktop/eda_app
+
+Check you are in the right place by listing files:
+
+  Windows:   dir
+  Mac/Linux: ls
+
+You should see  app.py  and  requirements.txt  in the list. If not, you are in the wrong
+folder - adjust the cd command.
+
+------------------------------------------------------------------------------------------
+STEP 4.  Create a "virtual environment" (a private box for this app's packages)
+------------------------------------------------------------------------------------------
+Run ONE of these:
+
+  Windows:        python -m venv venv
+  Mac/Linux:      python3 -m venv venv
+
+Now switch it on ("activate" it):
+
+  Windows (cmd):          venv\Scripts\activate
+  Windows (PowerShell):   venv\Scripts\Activate.ps1
+  Mac/Linux:              source venv/bin/activate
+
+You should now see  (venv)  at the start of your terminal line. That means it worked.
+(If PowerShell says "running scripts is disabled", use cmd instead, or run
+ Set-ExecutionPolicy -Scope Process Bypass  and try again.)
+
+NOTE: every time you open a NEW terminal later, repeat the "activate" command (Step 4)
+before starting the app.
+
+------------------------------------------------------------------------------------------
+STEP 5.  Install the packages
+------------------------------------------------------------------------------------------
+      pip install -r requirements.txt
+
+This downloads Flask, pandas, ydata-profiling and friends. It takes 2-5 minutes and prints
+a lot of text. It is finished when you get your prompt back with no red "ERROR" at the end.
+
+------------------------------------------------------------------------------------------
+STEP 6.  Create practice data
+------------------------------------------------------------------------------------------
+      python make_sample_data.py
+
+You will see  (20050, 12) . A new folder  sample_data  appears with two files:
+  - sample.csv  : 20,000 customer rows with deliberate "problems" for the tool to find
+                  (numbers saved as text like "$1,234.50", dates saved as text,
+                   a column that is 80% empty, a constant column, duplicate rows, outliers)
+  - multi.xlsx  : an Excel file with two sheets ("Customers" and "Small")
+
+------------------------------------------------------------------------------------------
+STEP 7.  Start the app
+------------------------------------------------------------------------------------------
+      python app.py
+
+You should see lines like:
+      * Debug mode: on
+      * Running on all addresses (0.0.0.0)
+      * Running on http://127.0.0.1:8501
+
+Leave this terminal window OPEN. The app only works while it is running.
+
+------------------------------------------------------------------------------------------
+STEP 8.  Open it in your browser
+------------------------------------------------------------------------------------------
+Go to:   http://localhost:8501
+
+You should see the Dashboard with four counters (all 0) and "No reports yet".
+
+------------------------------------------------------------------------------------------
+STEP 9.  Walk through a full test (the "happy path")
+------------------------------------------------------------------------------------------
+Follow this exactly the first time. Each item says what you should see.
+
+ A. Click "New analysis" (top right).
+    Title:  type  My first test   |   File: choose  sample_data/sample.csv
+    Click "Upload & continue".
+    -> You land on "Review & clean".
+
+ B. REVIEW & CLEAN page
+    - Top cards show: about 20,050 rows, 12 columns, 50 duplicate rows.
+    - In the column table you should see yellow/orange tags such as
+        "Numbers stored as text"   (column price_text)
+        "Dates stored as text"     (column signup)
+        a yes/no tag               (column churned)
+        "constant"                 (column constant)
+        "id-like"                  (column customer_id)
+    - Column "mostly_null" is already ticked "Drop" (it is about 80% empty).
+    - The "Treat as" dropdowns for the three text columns are already set to the fix
+      (marked with a star).
+    - Also tick "Drop" for the column  constant  (it carries no information).
+    - Tick "Remove 50 duplicate row(s)" at the bottom.
+    - Click "Save cleaned snapshot & continue".
+    -> Green message: "Cleaned snapshot saved: 20,000 rows x 10 columns."
+
+ C. ANALYSIS SETUP page
+    - Under "Bivariate analysis" click one of the suggested chips, e.g. "income x spend".
+    - Also pick X = segment, Y = income and click "Add pair"; then X = churned, Y = region
+      and click "Add pair". (The label next to the button tells you the analysis type.)
+    - Under "Multivariate - pair plot" leave the pre-ticked columns. You may choose a
+      "Colour by" value such as segment.
+    - Leave the rest as is. Click "Continue to outliers".
+
+ D. OUTLIERS page
+    - You see box plots and a table of outlier counts per column.
+    - Method: IQR rule.  Treatment: choose "Cap (winsorise)".
+    - Untick everything except  income  and  spend  (or leave all ticked).
+    - Click "Generate report".
+
+ E. PROGRESS page
+    - A progress bar moves through: Loading, Univariate statistics, Bivariate analysis,
+      Pair plot, Correlation, Outliers, Feature profiling, Saving, ydata-profiling.
+    - This takes about 10-30 seconds for this file. It then opens the report by itself.
+
+ F. REPORT page
+    - Two tabs: "EDA report" and "ydata-profiling". Click both.
+    - The EDA report has 11 numbered sections on the left menu (overview, column types,
+      missing values, cleaning applied, univariate, bivariate, pair plot, correlation,
+      outliers, feature profiling, ydata-profiling).
+    - "Download" menu -> "Cleaned dataset (CSV)" downloads the cleaned snapshot.
+    - "Open in new tab" shows the report full screen.
+
+ G. Back to "Dashboard" (top-left link)
+    - Counters now show 1 report and the row/column totals; your report is in the table
+      with a green "Ready" badge.
+
+------------------------------------------------------------------------------------------
+STEP 10.  Test the other features and error handling
+------------------------------------------------------------------------------------------
+Tick each box as you try it.
+
+ [ ] EXCEL SHEET PICKER: upload sample_data/multi.xlsx. You should be asked to choose a
+     sheet ("Customers" or "Small") before anything else.
+ [ ] WRONG FILE TYPE: try to upload any .txt or .pdf. You should get a red message
+     "Unsupported file type" and nothing is created.
+ [ ] TOO BIG: a file over 100 MB must be rejected with a red message mentioning the limit.
+ [ ] EMPTY / BROKEN FILE: upload an empty .csv. You should get a red, friendly message.
+ [ ] GO BACK / RESUME: start an analysis, close the browser tab at the "Review & clean"
+     page, open the Dashboard. The upload appears with a yellow "In progress" badge and a
+     "Resume" button that returns you to where you stopped.
+ [ ] DELETE: on the Dashboard click the red trash icon. A confirmation pop-up appears.
+     Click "Delete". The report disappears and the counters go down.
+ [ ] RESTART SURVIVAL: stop the app (Step 11), start it again (Step 7). Your finished
+     reports are still on the Dashboard (they are saved to disk).
+ [ ] REAL DATA: try one of your own CSV/Excel files. Start with something under 20 MB.
+ [ ] BIG FILE (optional): try a 50-100 MB CSV. Expect 1-5 minutes. You can leave the
+     progress page; the report appears on the Dashboard when done.
+
+------------------------------------------------------------------------------------------
+STEP 11.  Stop the app / start fresh
+------------------------------------------------------------------------------------------
+  - To STOP: click in the terminal window and press  Ctrl + C .
+  - To START again later:  cd into the folder, activate (Step 4), run  python app.py .
+  - To ERASE all test reports and start clean: stop the app, then delete everything inside
+    the  uploads  and  reports  folders (keep the folders) and delete  metadata.json .
+
+------------------------------------------------------------------------------------------
+Want to test from ANOTHER computer on your office network? 
+------------------------------------------------------------------------------------------
+The app already listens on all network addresses. Find your computer's IP address
+(Windows: run  ipconfig , look for "IPv4 Address";  Mac/Linux: run  ifconfig  or
+ hostname -I ). A colleague then opens  http://YOUR-IP:8501 .
+If it does not load, your firewall is blocking port 8501 - allow it (see Part 5).
+
+
+==========================================================================================
+PART 2  -  DEPLOY IT FOR YOUR TEAM
+==========================================================================================
+
+READ THESE 4 RULES FIRST (they apply to every option)
+------------------------------------------------------------------------------------------
+ RULE 1  RUN ONLY ONE "WORKER".
+         The app builds reports in the background inside its own process and protects its
+         records with an in-process lock. If you start several worker processes they will
+         not see each other's work and reports will look "stuck". Every command below
+         already uses a single worker with several threads - do not change that.
+
+ RULE 2  THERE IS NO LOGIN.
+         Anybody who can reach the web address can see, download and delete EVERY report.
+         Only put it on a private/company network, OR add a password (Option B shows how
+         to add one in 2 minutes using nginx).
+
+ RULE 3  TURN DEBUG MODE OFF IN PRODUCTION.
+         "python app.py" runs with debug mode ON (as originally requested). Debug mode lets
+         anyone who reaches an error page run code on your server. The options below use a
+         proper server (gunicorn / waitress) which does not have this problem, and Option D
+         shows how to switch debug off.
+
+ RULE 4  PLAN MEMORY AND DISK.
+         - Memory: a 100 MB CSV (about 900,000 rows) needed roughly 0.8 GB while its report
+           was being built. Two reports at once ~ 2 GB. Choose a server with 4 GB RAM or
+           more (8 GB if people upload big files often).
+         - Disk: keep about 3x the size of all uploaded files free (original file + cleaned
+           CSV + report). 20 GB is a comfortable start.
+
+Which option should I choose?
+  A. Docker ........ you have Docker (or can install it). EASIEST and most repeatable.
+  B. Linux server .. a normal company Linux machine/VM (Ubuntu). Most common choice.
+  C. Windows server  the only machine available is Windows.
+  D. Quick & simple  small trusted team, you just want it running now (least secure).
+
+
+------------------------------------------------------------------------------------------
+OPTION A  -  DOCKER
+------------------------------------------------------------------------------------------
+Needs: Docker installed on the server (https://docs.docker.com/get-docker/).
+
+ 1. Copy auto_eda_app.zip to the server and unzip it. Open a terminal in the unzipped
+    folder (the one that contains the file named  Dockerfile ).
+
+ 2. Build the image (one-time, takes a few minutes):
+
+        docker build -t auto-eda .
+
+ 3. Start it:
+
+        docker run -d --name auto-eda -p 8501:8501 -v eda_data:/data --restart unless-stopped auto-eda
+
+    What the parts mean:
+        -d                      run in the background
+        -p 8501:8501            make the app reachable on port 8501
+        -v eda_data:/data       keep all uploads/reports in a Docker "volume" so they
+                                survive restarts and upgrades
+        --restart unless-stopped  start again automatically after a reboot
+
+ 4. Open  http://SERVER-IP:8501  in a browser.
+
+ 5. Useful commands:
+        docker logs -f auto-eda          show live logs (Ctrl+C to leave)
+        docker stop auto-eda             stop
+        docker start auto-eda            start again
+        docker rm -f auto-eda            remove the container (data stays in the volume)
+
+ 6. TO UPGRADE later: unzip the new version, then
+        docker build -t auto-eda .
+        docker rm -f auto-eda
+        (run the "docker run ..." command from step 3 again - your data is kept)
+
+ 7. Add password protection / HTTPS: see "Adding a password" and "Adding HTTPS" at the end
+    of Option B (they work the same way in front of Docker; use nginx on the host and
+    point it to http://127.0.0.1:8501).
+
+ 8. To add a password without nginx, ask your IT team to put the app behind your
+    company's existing reverse proxy / single-sign-on.
+
+
+------------------------------------------------------------------------------------------
+OPTION B  -  LINUX SERVER (Ubuntu 22.04 / 24.04)  with gunicorn + systemd + nginx
+------------------------------------------------------------------------------------------
+Every command below is typed on the server (connect with SSH). Lines starting with
+"sudo" need an account that is allowed to use sudo.
+
+ STEP B1. Install the system software
+        sudo apt update
+        sudo apt install -y python3 python3-venv python3-pip unzip nginx apache2-utils
+
+ STEP B2. Create a dedicated, low-privilege user and folders
+        sudo useradd -r -m -s /bin/bash edaapp
+        sudo mkdir -p /opt/auto_eda_app /var/lib/auto_eda
+        sudo chown -R edaapp:edaapp /opt/auto_eda_app /var/lib/auto_eda
+
+        (/opt/auto_eda_app = the program.   /var/lib/auto_eda = ALL uploaded files, reports
+         and records. Keeping data separate makes backups and upgrades simple.)
+
+ STEP B3. Copy the project to the server and unzip it
+    From your own computer (replace user@server):
+        scp auto_eda_app.zip user@server:/tmp/
+    On the server:
+        sudo -u edaapp unzip /tmp/auto_eda_app.zip -d /tmp/eda_unzipped
+        sudo -u edaapp cp -r /tmp/eda_unzipped/eda_app/. /opt/auto_eda_app/
+
+ STEP B4. Install the Python packages (as the edaapp user)
+        sudo -u edaapp bash -c "cd /opt/auto_eda_app && python3 -m venv venv && venv/bin/pip install -r requirements.txt gunicorn"
+
+ STEP B5. Quick test before making it permanent
+        sudo -u edaapp bash -c "cd /opt/auto_eda_app && EDA_DATA_DIR=/var/lib/auto_eda venv/bin/gunicorn -w 1 --threads 8 --timeout 600 -b 0.0.0.0:8501 app:app"
+
+    From another computer open  http://SERVER-IP:8501 . If you see the Dashboard, it works.
+    Press Ctrl+C on the server to stop this test.
+
+ STEP B6. Make it start automatically (systemd service)
+    Create the service file:
+        sudo nano /etc/systemd/system/auto-eda.service
+
+    Paste this exactly, then save (Ctrl+O, Enter) and exit (Ctrl+X):
+
+        [Unit]
+        Description=Auto EDA web app
+        After=network.target
+
+        [Service]
+        User=edaapp
+        WorkingDirectory=/opt/auto_eda_app
+        Environment="EDA_DATA_DIR=/var/lib/auto_eda"
+        Environment="EDA_DEBUG=0"
+        ExecStart=/opt/auto_eda_app/venv/bin/gunicorn -w 1 --threads 8 --timeout 600 -b 127.0.0.1:8501 app:app
+        Restart=always
+        RestartSec=3
+
+        [Install]
+        WantedBy=multi-user.target
+
+    Start it:
+        sudo systemctl daemon-reload
+        sudo systemctl enable --now auto-eda
+        sudo systemctl status auto-eda          (should say "active (running)"; press q)
+
+    Note: this binds to 127.0.0.1 (only the server itself). nginx in the next step is
+    what exposes it to your team.
+
+ STEP B7. Put nginx in front (needed for big uploads and long waits)
+    Create the nginx site file:
+        sudo nano /etc/nginx/sites-available/auto-eda
+
+    Paste (change  eda.yourcompany.com  to your real name, or use  _  to accept any name):
+
+        server {
+            listen 80;
+            server_name eda.yourcompany.com;
+
+            client_max_body_size 110M;        # lets 100 MB uploads through
+            proxy_read_timeout 600s;          # large files take a while to read
+            proxy_send_timeout 600s;
+            proxy_request_buffering off;
+
+            location / {
+                proxy_pass http://127.0.0.1:8501;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+        }
+
+    Turn it on:
+        sudo ln -s /etc/nginx/sites-available/auto-eda /etc/nginx/sites-enabled/
+        sudo rm -f /etc/nginx/sites-enabled/default
+        sudo nginx -t                  (must say "syntax is ok")
+        sudo systemctl reload nginx
+
+    Open the firewall for web traffic (if you use ufw):
+        sudo ufw allow 'Nginx Full'
+
+    Now your team can open  http://eda.yourcompany.com  (or http://SERVER-IP).
+    IMPORTANT: if uploads of large files fail with "413 Request Entity Too Large", the
+    line  client_max_body_size 110M;  is missing or nginx was not reloaded.
+
+ ADDING A PASSWORD (strongly recommended - the app has no login of its own)
+        sudo htpasswd -c /etc/nginx/.htpasswd teamuser        (type a password twice)
+    Then in  /etc/nginx/sites-available/auto-eda , inside the  location / { ... }  block add:
+
+                auth_basic "Restricted";
+                auth_basic_user_file /etc/nginx/.htpasswd;
+
+        sudo nginx -t && sudo systemctl reload nginx
+    Browsers now ask for the user name and password. (One shared login for the whole team.
+    To add another person later:  sudo htpasswd /etc/nginx/.htpasswd anotheruser  - no -c.)
+
+ ADDING HTTPS (recommended - needs a real domain name that points to the server)
+        sudo apt install -y certbot python3-certbot-nginx
+        sudo certbot --nginx -d eda.yourcompany.com
+    Follow the questions; choose to redirect HTTP to HTTPS. Renewal is automatic.
+
+
+------------------------------------------------------------------------------------------
+OPTION C  -  WINDOWS SERVER / WINDOWS PC
+------------------------------------------------------------------------------------------
+(Gunicorn does not run on Windows, so we use "waitress", a pure-Python server. Everything
+else is the same. The waitress command itself has not been run in the testing for this
+package, so do the quick check in step 5.)
+
+ 1. Install Python 3.12 (tick "Add python.exe to PATH"), as in Part 1 Step 1.
+ 2. Unzip the project, e.g. to  C:\auto_eda_app  and open "cmd" in that folder:
+        cd C:\auto_eda_app
+ 3. Create the environment and install:
+        python -m venv venv
+        venv\Scripts\activate
+        pip install -r requirements.txt waitress
+ 4. Start it (one process, 8 threads, port 8501, data kept in C:\auto_eda_data):
+        set EDA_DATA_DIR=C:\auto_eda_data
+        set EDA_DEBUG=0
+        waitress-serve --listen=0.0.0.0:8501 --threads=8 --max-request-body-size=110000000 app:app
+ 5. Quick check: open  http://localhost:8501  and upload  sample_data\sample.csv
+    (create it with  python make_sample_data.py ). If a report is produced, it works.
+ 6. Allow other computers in (Windows Firewall), run in an ADMIN cmd window:
+        netsh advfirewall firewall add rule name="Auto EDA" dir=in action=allow protocol=TCP localport=8501
+ 7. Keep it running after logoff/reboot: the simplest way is the free tool NSSM
+    (https://nssm.cc). In an admin cmd window:
+        nssm install AutoEDA
+    In the window that opens:
+        Path:               C:\auto_eda_app\venv\Scripts\waitress-serve.exe
+        Startup directory:  C:\auto_eda_app
+        Arguments:          --listen=0.0.0.0:8501 --threads=8 --max-request-body-size=110000000 app:app
+    On the "Environment" tab add two lines:
+        EDA_DATA_DIR=C:\auto_eda_data
+        EDA_DEBUG=0
+    Click "Install service", then:  nssm start AutoEDA
+ 8. There is no built-in password. Keep it on the internal network, or put it behind
+    IIS / a reverse proxy that requires sign-in.
+
+
+------------------------------------------------------------------------------------------
+OPTION D  -  QUICK AND SIMPLE  (small trusted team, internal network only)
+------------------------------------------------------------------------------------------
+Use this only if everybody who can reach the machine is trusted.
+
+ 1. Do Part 1, Steps 1-5 on the shared machine.
+ 2. Start with debug switched OFF and your data in a stable folder:
+
+      Mac/Linux:
+          EDA_DEBUG=0 EDA_DATA_DIR=$HOME/eda_data python app.py
+
+      Windows (cmd):
+          set EDA_DEBUG=0
+          set EDA_DATA_DIR=C:\eda_data
+          python app.py
+
+ 3. Share  http://MACHINE-IP:8501  with the team.
+ 4. It stops when you close the terminal or reboot. To keep it alive after you close the
+    terminal on Linux:
+          nohup env EDA_DEBUG=0 EDA_DATA_DIR=$HOME/eda_data venv/bin/python app.py > eda.log 2>&1 &
+    (Option B is the proper way to keep it running permanently.)
+
+
+==========================================================================================
+PART 3  -  KEEPING IT RUNNING
+==========================================================================================
+
+WHERE IS MY DATA?
+  Everything people upload and every report lives in the data folder:
+      - the folder named by EDA_DATA_DIR (Options A, B, C, D as set above), or
+      - the app folder itself if you never set EDA_DATA_DIR (Part 1 testing).
+  It contains:
+      uploads/        the original uploaded files
+      reports/        finished reports (report.html, profile.html, cleaned CSVs)
+      metadata.json   the list shown on the Dashboard
+      .secret_key     a random key used for sessions (keep it private; do not share)
+
+BACKUP  (do this regularly - e.g. weekly)
+  Stop the app (or do it when nobody is using it), then copy the whole data folder:
+      Linux:   sudo tar czf /backup/auto_eda_$(date +%F).tar.gz /var/lib/auto_eda
+      Windows: copy  C:\auto_eda_data  to a backup location
+      Docker:  docker run --rm -v eda_data:/data -v $(pwd):/backup alpine tar czf /backup/eda_backup.tar.gz -C /data .
+  To RESTORE: stop the app, put the folder contents back, start the app.
+
+UPGRADE TO A NEW VERSION
+  1. Make a backup (above).
+  2. Stop the app.
+  3. Replace the program files with the new ones (keep your data folder and, for Option B,
+     keep the venv folder).
+  4. Run  pip install -r requirements.txt  again (inside the activated venv).
+  5. Start the app.
+     Option B quick version:  sudo systemctl restart auto-eda
+
+CLEAN UP DISK SPACE
+  Open the Dashboard and delete reports you no longer need (trash icon). This removes
+  the uploaded file, the report and the CSVs together. Unfinished uploads that were
+  abandoned are removed automatically after 24 hours.
+
+LOOK AT THE LOGS (when something goes wrong)
+  Option A:  docker logs --tail 200 auto-eda
+  Option B:  sudo journalctl -u auto-eda -n 200 --no-pager
+             (nginx: sudo tail -n 100 /var/log/nginx/error.log)
+  Option C:  NSSM can write logs to files (nssm edit AutoEDA -> "I/O" tab)
+  Option D:  the terminal window, or  eda.log
+
+RESTART
+  Option A:  docker restart auto-eda
+  Option B:  sudo systemctl restart auto-eda
+  Option C:  nssm restart AutoEDA
+  If the app is restarted WHILE a report is being built, that report is marked "Failed"
+  on the Dashboard. Open it and click back to the Outliers step to run it again.
+
+
+==========================================================================================
+PART 4  -  SETTINGS YOU CAN CHANGE  (environment variables)
+==========================================================================================
+How to set one:
+  Linux/Mac one-off:  EDA_DEBUG=0 python app.py
+  Windows cmd:        set EDA_DEBUG=0     (then run the command)
+  systemd (Option B): add an  Environment="NAME=value"  line, then
+                      sudo systemctl daemon-reload && sudo systemctl restart auto-eda
+  Docker:             add  -e NAME=value  to the "docker run" command
+
+  NAME                        DEFAULT          MEANING
+  --------------------------  ---------------  ----------------------------------------------
+  EDA_DATA_DIR                the app folder   where uploads, reports, metadata live
+  EDA_DEBUG                   1                set 0 to switch debug OFF (python app.py only)
+  EDA_MAX_WORKERS             2                reports built at the same time (raise only if
+                                               the server has lots of RAM)
+  EDA_PROFILE_SAMPLE_ROWS     50000            default rows used for the ydata-profiling
+                                               report (bigger = slower, more memory)
+  EDA_SECRET_KEY              auto-generated   fixed session key (optional)
+
+Changing the 100 MB upload limit or port: edit  config.py  (MAX_CONTENT_LENGTH, PORT).
+If you raise the limit also change  client_max_body_size  in nginx (Option B).
+
+
+==========================================================================================
+PART 5  -  COMMON PROBLEMS AND FIXES
+==========================================================================================
+
+ "python is not recognized" / "command not found"
+     Python is not installed or not on PATH. Redo Part 1 Step 1 (Windows: tick
+     "Add python.exe to PATH", then open a NEW terminal). On Mac/Linux use  python3 .
+
+ "No module named flask" (or pandas, ydata_profiling ...)
+     The virtual environment is not active or packages are not installed.
+     Activate it (Part 1 Step 4), then run  pip install -r requirements.txt .
+
+ "ModuleNotFoundError: No module named 'pkg_resources'"
+     Run:  pip install "setuptools<81"   then restart the app.
+     (The ydata-profiling tab will be missing for reports built before this fix; the main
+      EDA report still works.)
+
+ "Address already in use" / port 8501 is busy
+     Another copy of the app is still running. Stop it (Ctrl+C in its window), or change
+     the PORT value in config.py.
+
+ The page does not open from another computer
+     - Use the server's IP address, not "localhost".
+     - Open the firewall: Linux  sudo ufw allow 8501/tcp  (Option B uses 80/443 instead);
+       Windows  see Option C step 6.
+     - Cloud servers (AWS/Azure/GCP): also allow the port in the cloud "security group".
+
+ "413 Request Entity Too Large" when uploading
+     nginx is blocking big files. Add  client_max_body_size 110M;  and reload nginx.
+     (Files over 100 MB are rejected by the app by design.)
+
+ Upload shows a spinner for a very long time, then an error
+     Large Excel files (.xlsx) are slow to read. Convert to CSV first, or be patient.
+     Behind nginx make sure the  proxy_read_timeout 600s;  line is present.
+
+ A report stays at "Building" forever or shows "Failed"
+     - Check the logs (Part 3). The error text is also shown on the Dashboard row.
+     - Often the machine ran out of memory: try a smaller file, close other programs,
+       or add RAM. You can also lower  EDA_MAX_WORKERS  to 1.
+     - If you run with several workers, reports get "stuck". Use exactly ONE worker.
+
+ The ydata-profiling tab says it "could not be generated"
+     The main EDA report is still complete. Common cause: too little memory, or a very wide
+     file. Lower the profiling sample size on the "Analysis setup" step (e.g. 10,000), or
+     untick "Also generate a ydata-profiling report".
+
+ Dates / numbers are not recognised as I expect
+     On the "Review & clean" page use the "Treat as" dropdown of that column to force
+     Numerical, Categorical, Datetime or Boolean.
+
+ Special characters look garbled (accents, etc.)
+     The tool tries UTF-8, then Windows-1252, then Latin-1. Re-save the file as
+     "CSV UTF-8" from Excel for best results.
+
+ I forgot to activate the virtual environment
+     Windows:  venv\Scripts\activate      Mac/Linux:  source venv/bin/activate
+
+ I want to start over completely
+     Stop the app, delete the contents of  uploads  and  reports  and the file
+     metadata.json  (in your data folder), then start the app again.
+
+
+==========================================================================================
+QUICK REFERENCE  (cheat sheet)
+==========================================================================================
+ Test on my computer:
+     cd eda_app
+     python -m venv venv                     (Windows: same;  Mac/Linux: python3 -m venv venv)
+     venv\Scripts\activate                   (Mac/Linux: source venv/bin/activate)
+     pip install -r requirements.txt
+     python make_sample_data.py
+     python app.py                           -> open http://localhost:8501
+
+ Deploy with Docker:
+     docker build -t auto-eda .
+     docker run -d --name auto-eda -p 8501:8501 -v eda_data:/data --restart unless-stopped auto-eda
+
+ Deploy on Linux (after Part 2 Option B steps B1-B7):
+     sudo systemctl restart auto-eda         (restart)
+     sudo journalctl -u auto-eda -n 200      (logs)
+
+ Remember:  ONE worker  |  add a password  |  debug OFF  |  back up the data folder
+==========================================================================================

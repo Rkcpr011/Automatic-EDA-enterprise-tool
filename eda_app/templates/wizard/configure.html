@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Analysis setup{% endblock %}
+{% block content %}
+{% include "wizard/_steps.html" %}
+<h1 class="h4 mb-1">Analysis setup <span class="text-muted fs-6">· {{ entry.title }}</span></h1>
+<p class="text-muted">Cleaned dataset: {{ shape[0]|num }} rows × {{ shape[1]|num }} columns. Univariate statistics for every column are always included; choose the relationships you want to examine.</p>
+
+<form method="post" id="cfgForm">
+  <!-- Bivariate -->
+  <div class="card shadow-sm mb-3"><div class="card-body">
+    <h2 class="h5">Bivariate analysis</h2>
+    <p class="text-muted small mb-3">Pick two columns. The analysis type is chosen automatically: numerical vs numerical (scatter + correlation), numerical vs categorical (box plot + ANOVA), categorical vs categorical (cross-tab + chi-square).</p>
+    <div class="row g-2 align-items-end mb-2">
+      <div class="col-md-4"><label class="form-label small mb-1">Column X</label><select class="form-select" id="selX"></select></div>
+      <div class="col-md-4"><label class="form-label small mb-1">Column Y</label><select class="form-select" id="selY"></select></div>
+      <div class="col-md-4"><button type="button" class="btn btn-outline-primary w-100" id="addPair"><i class="bi bi-plus-lg"></i> Add pair <span class="small text-muted" id="pairKind"></span></button></div>
+    </div>
+    {% if suggestions %}
+    <div class="mb-2 small"><span class="text-muted me-1">Suggested (strongest correlations):</span>
+      {% for s in suggestions %}<button type="button" class="btn btn-sm btn-light border me-1 mb-1 suggest" data-x="{{ s.x }}" data-y="{{ s.y }}">{{ s.x }} × {{ s.y }} <span class="text-muted">r={{ s.r }}</span></button>{% endfor %}
+    </div>
+    {% endif %}
+    <ul class="list-group" id="pairList"></ul>
+    <div class="form-text" id="pairEmpty">No pairs selected - the bivariate section will be skipped.</div>
+  </div></div>
+
+  <!-- Pair plot -->
+  <div class="card shadow-sm mb-3"><div class="card-body">
+    <h2 class="h5">Multivariate - pair plot</h2>
+    {% if numeric|length >= 2 %}
+    <p class="text-muted small">Choose 2–{{ max_pp }} numerical columns (pair plots become unreadable beyond that).</p>
+    <div class="row">
+      {% for c in numeric %}
+      <div class="col-md-4 col-sm-6"><div class="form-check">
+        <input class="form-check-input pp" type="checkbox" name="pp_cols" value="{{ c }}" id="pp{{ loop.index }}" {% if c in default_pp %}checked{% endif %}>
+        <label class="form-check-label text-break" for="pp{{ loop.index }}">{{ c }}</label></div></div>
+      {% endfor %}
+    </div>
+    <div class="form-text" id="ppCount"></div>
+    {% if hue_options %}
+    <div class="mt-2" style="max-width:320px"><label class="form-label small mb-1">Colour by (optional)</label>
+      <select class="form-select form-select-sm" name="pp_hue"><option value="">None</option>
+        {% for h in hue_options %}<option value="{{ h }}" {% if saved.pairplot_hue == h %}selected{% endif %}>{{ h }}</option>{% endfor %}
+      </select></div>
+    {% endif %}
+    {% else %}<p class="text-muted mb-0">Fewer than two numerical columns - pair plot will be skipped.</p>{% endif %}
+  </div></div>
+
+  <!-- Correlation + profile -->
+  <div class="card shadow-sm mb-4"><div class="card-body">
+    <h2 class="h5">Correlation &amp; profiling</h2>
+    <div class="row g-3">
+      <div class="col-md-4"><label class="form-label small mb-1" for="ct">Flag |correlation| ≥</label>
+        <input class="form-control form-control-sm" type="number" step="0.05" min="0.1" max="0.99" id="ct" name="corr_threshold" value="{{ saved.corr_threshold or 0.8 }}">
+        <div class="form-text">Pearson &amp; Spearman matrices and heatmaps are always produced.</div></div>
+      <div class="col-md-8">
+        <div class="form-check"><input class="form-check-input" type="checkbox" id="rp" name="run_profile" {% if saved.run_profile is not defined or saved.run_profile %}checked{% endif %}>
+          <label class="form-check-label" for="rp">Also generate a ydata-profiling report (minimal mode)</label></div>
+        <div class="row g-2 align-items-center mt-1"><div class="col-auto"><label class="small" for="ps">Sample size for profiling</label></div>
+          <div class="col-auto"><input class="form-control form-control-sm" style="width:120px" type="number" min="1000" step="1000" id="ps" name="profile_sample_rows" value="{{ saved.profile_sample_rows or default_sample }}"></div>
+          <div class="col-auto form-text m-0">rows (datasets larger than this are randomly sampled)</div></div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="d-flex justify-content-between">
+    <a class="btn btn-light" href="{{ url_for('wizard_clean', job_id=entry.id) }}"><i class="bi bi-arrow-left"></i> Back</a>
+    <button class="btn btn-primary">Continue to outliers <i class="bi bi-arrow-right"></i></button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.EDA_COLS = {{ columns_meta|tojson }};
+  window.EDA_SAVED_PAIRS = {{ (saved.pairs or [])|tojson }};
+  window.EDA_MAX_PAIRS = {{ max_pairs }};
+  window.EDA_MAX_PP = {{ max_pp }};
+</script>
+<script src="{{ url_for('static', filename='js/configure.js') }}"></script>
+{% endblock %}

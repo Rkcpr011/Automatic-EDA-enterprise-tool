@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Outliers{% endblock %}
+{% block content %}
+{% include "wizard/_steps.html" %}
+<h1 class="h4 mb-1">Outlier analysis <span class="text-muted fs-6">· {{ entry.title }}</span></h1>
+<p class="text-muted">Outliers are detected on {{ n_rows|num }} rows. Choose how to detect them and what to do. Univariate, bivariate and correlation results use the data <em>before</em> treatment; feature profiling and the profiling report use the data <em>after</em>.</p>
+
+{% if grid %}
+<div class="card shadow-sm mb-3"><div class="card-header">Columns with outliers (IQR rule)</div>
+  <div class="card-body text-center"><img class="img-fluid" src="data:image/png;base64,{{ grid }}" alt="Box plots"></div></div>
+{% endif %}
+
+<form method="post">
+  <div class="card shadow-sm mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Numerical columns</strong>
+      <div><button type="button" class="btn btn-sm btn-outline-secondary" id="selAll">Select all</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="selNone">None</button></div>
+    </div>
+    {% if summary %}
+    <div class="table-responsive col-table"><table class="table table-sm table-hover align-middle mb-0">
+      <thead class="table-light sticky-top"><tr><th></th><th>Column</th><th class="text-end">Min</th><th class="text-end">Max</th>
+        <th class="text-end">IQR fences</th><th class="text-end">IQR outliers</th><th class="text-end">Z-score outliers</th></tr></thead>
+      <tbody>
+      {% for r in summary %}
+        <tr>
+          <td><input class="form-check-input oc" type="checkbox" name="cols" value="{{ r['column'] }}" {% if r['column'] in selected %}checked{% endif %}></td>
+          <td class="fw-medium text-break">{{ r['column'] }}</td>
+          <td class="text-end">{{ '%.4g'|format(r['min']) }}</td><td class="text-end">{{ '%.4g'|format(r['max']) }}</td>
+          <td class="text-end small text-muted">{{ '%.4g'|format(r['IQR lower']) }} … {{ '%.4g'|format(r['IQR upper']) }}</td>
+          <td class="text-end">{{ r['IQR outliers']|num }} <span class="text-muted small">({{ r['IQR %'] }}%)</span></td>
+          <td class="text-end">{{ r['Z outliers']|num }} <span class="text-muted small">({{ r['Z %'] }}%)</span></td>
+        </tr>
+      {% endfor %}
+      </tbody></table></div>
+    {% else %}<div class="card-body text-muted">No numerical columns with variation were found.</div>{% endif %}
+  </div>
+
+  <div class="card shadow-sm mb-4"><div class="card-body"><div class="row g-3">
+    <div class="col-md-4">
+      <label class="form-label fw-medium">Detection method</label>
+      <select class="form-select" name="method" id="method">
+        <option value="iqr" {% if saved.method == 'iqr' %}selected{% endif %}>IQR rule (robust)</option>
+        <option value="zscore" {% if saved.method == 'zscore' %}selected{% endif %}>Z-score</option></select>
+      <div class="row g-2 mt-1">
+        <div class="col-6"><label class="small">IQR multiplier</label><input class="form-control form-control-sm" type="number" step="0.1" min="0.5" max="10" name="iqr_k" value="{{ saved.iqr_k }}"></div>
+        <div class="col-6"><label class="small">|Z| threshold</label><input class="form-control form-control-sm" type="number" step="0.1" min="1" max="10" name="z" value="{{ saved.z }}"></div>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <label class="form-label fw-medium">Treatment for the selected columns</label>
+      {% for val, title, desc in [('flag','Report only','Keep the data unchanged; outliers are described in the report.'),
+                                  ('cap','Cap (winsorise)','Clip extreme values to the detection limits; no rows are lost.'),
+                                  ('remove','Remove rows','Delete every row that is an outlier in any selected column.')] %}
+      <div class="form-check mb-1"><input class="form-check-input" type="radio" name="action" id="act{{ val }}" value="{{ val }}" {% if saved.action == val %}checked{% endif %}>
+        <label class="form-check-label" for="act{{ val }}"><strong>{{ title }}</strong> <span class="text-muted small">- {{ desc }}</span></label></div>
+      {% endfor %}
+    </div>
+  </div></div></div>
+
+  <div class="d-flex justify-content-between">
+    <a class="btn btn-light" href="{{ url_for('wizard_configure', job_id=entry.id) }}"><i class="bi bi-arrow-left"></i> Back</a>
+    <button class="btn btn-success" id="goBtn"><i class="bi bi-play-fill"></i> Generate report</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById('selAll').onclick = function () { document.querySelectorAll('.oc').forEach(function (c) { c.checked = true; }); };
+  document.getElementById('selNone').onclick = function () { document.querySelectorAll('.oc').forEach(function (c) { c.checked = false; }); };
+  document.querySelector('form').addEventListener('submit', function () { document.getElementById('goBtn').disabled = true; });
+</script>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ entry.title }}{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <a href="{{ url_for('index') }}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> Dashboard</a>
+    <h1 class="h4 mb-1 mt-1">{{ entry.title }}</h1>
+    <div class="text-muted small">
+      <span class="badge text-bg-secondary">{{ entry.file_type }}</span>
+      {{ entry.filename }}{% if entry.sheet %} · sheet “{{ entry.sheet }}”{% endif %} · {{ entry.file_size|filesize }}
+      · {{ entry.rows|num }} rows × {{ entry.columns|num }} cols · uploaded {{ entry.upload_date|dt }}
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-sm btn-outline-secondary" target="_blank" id="openNew" href="{{ url_for('report_file', job_id=entry.id, filename='report.html') }}"><i class="bi bi-box-arrow-up-right"></i> Open in new tab</a>
+    <div class="dropdown">
+      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-download"></i> Download</button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{{ url_for('report_file', job_id=entry.id, filename='cleaned_dataset.csv') }}">Cleaned dataset (CSV)</a></li>
+        {% if has_final %}<li><a class="dropdown-item" href="{{ url_for('report_file', job_id=entry.id, filename='final_dataset.csv') }}">After outlier treatment (CSV)</a></li>{% endif %}
+      </ul>
+    </div>
+    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal"
+            data-action="{{ url_for('report_delete', job_id=entry.id) }}" data-title="{{ entry.title }}"><i class="bi bi-trash"></i> Delete</button>
+  </div>
+</div>
+
+<ul class="nav nav-tabs mb-0" id="tabs">
+  <li class="nav-item"><button class="nav-link active" data-src="{{ url_for('report_file', job_id=entry.id, filename='report.html') }}">EDA report</button></li>
+  {% if has_profile %}<li class="nav-item"><button class="nav-link" data-src="{{ url_for('report_file', job_id=entry.id, filename='profile.html') }}">ydata-profiling</button></li>{% endif %}
+</ul>
+<div class="card rounded-top-0 shadow-sm"><iframe id="frame" class="report-frame" title="Report" src="{{ url_for('report_file', job_id=entry.id, filename='report.html') }}"></iframe></div>
+
+{% include "_delete_modal.html" %}
+{% endblock %}
+{% block scripts %}
+{% include "_delete_modal_js.html" %}
+<script>
+  document.querySelectorAll('#tabs .nav-link').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#tabs .nav-link').forEach(function (x) { x.classList.remove('active'); });
+      b.classList.add('active');
+      document.getElementById('frame').src = b.dataset.src;
+      document.getElementById('openNew').href = b.dataset.src;
+    });
+  });
+</script>
+{% endblock %}

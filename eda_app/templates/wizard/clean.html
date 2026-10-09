@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Review & clean{% endblock %}
+{% block content %}
+{% include "wizard/_steps.html" %}
+
+<h1 class="h4 mb-1">Review &amp; clean <span class="text-muted fs-6">· {{ entry.title }}{% if entry.sheet %} (sheet “{{ entry.sheet }}”){% endif %}</span></h1>
+<p class="text-muted">Check how the data was read, fix column types, and decide which columns to drop. Nothing is changed until you press <em>Save &amp; continue</em>.</p>
+
+<div class="row g-3 mb-3">
+  {% for label, value in [('Rows', summary.rows|num), ('Columns', summary.cols|num),
+      ('Numerical', summary.n_numeric), ('Categorical', summary.n_categorical), ('Datetime', summary.n_datetime),
+      ('Duplicate rows', summary.duplicates|num), ('Missing cells', summary.missing_cells|num ~ ' (' ~ summary.missing_pct ~ '%)'),
+      ('Memory', summary.memory_mb ~ ' MB')] %}
+  <div class="col-6 col-md-3"><div class="card stat-card h-100"><div class="card-body py-2">
+    <div class="text-muted small">{{ label }}</div><div class="fs-5 fw-semibold">{{ value }}</div></div></div></div>
+  {% endfor %}
+</div>
+
+<div class="accordion mb-3" id="acc">
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#headTbl">First 10 rows</button></h2>
+    <div id="headTbl" class="accordion-collapse collapse"><div class="accordion-body table-responsive">{{ head|safe }}</div></div>
+  </div>
+  {% if missing_plot %}
+  <div class="accordion-item">
+    <h2 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#missPlot">Missing values chart</button></h2>
+    <div id="missPlot" class="accordion-collapse collapse"><div class="accordion-body text-center">
+      <img class="img-fluid" src="data:image/png;base64,{{ missing_plot }}" alt="Missing values"></div></div>
+  </div>
+  {% endif %}
+</div>
+
+<form method="get" class="card card-body shadow-sm mb-3 py-2">
+  <div class="row g-2 align-items-center">
+    <div class="col-auto"><label class="col-form-label" for="threshold">High-null threshold (% missing)</label></div>
+    <div class="col-auto"><input class="form-control form-control-sm" style="width:90px" type="number" min="1" max="100" step="1" id="threshold" name="threshold" value="{{ threshold|int }}"></div>
+    <div class="col-auto"><button class="btn btn-sm btn-outline-secondary">Re-evaluate</button></div>
+    <div class="col text-muted small">{{ n_high }} column(s) exceed this and are pre-selected for removal. {{ n_issues }} column(s) have a possible type problem.</div>
+  </div>
+</form>
+
+<form method="post">
+  <input type="hidden" name="threshold" value="{{ threshold }}">
+  <div class="card shadow-sm mb-3">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <strong>Columns</strong>
+      <div class="d-flex gap-2">
+        <input id="colFilter" class="form-control form-control-sm" placeholder="Filter columns…" style="width:200px">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearDrops">Clear drops</button>
+      </div>
+    </div>
+    <div class="table-responsive col-table">
+      <table class="table table-sm table-hover align-middle mb-0" id="colTable">
+        <thead class="table-light sticky-top"><tr>
+          <th class="text-center" title="Drop this column">Drop</th><th>Column</th><th>Stored as</th><th>Detected</th>
+          <th class="text-end">Unique</th><th style="min-width:150px">Missing</th><th>Notes</th><th style="min-width:140px">Treat as</th>
+        </tr></thead>
+        <tbody>
+        {% for r in rows %}
+          <tr class="{% if r.drop %}table-warning{% endif %}">
+            <td class="text-center"><input class="form-check-input drop-box" type="checkbox" name="drop_{{ r.idx }}" {% if r.drop %}checked{% endif %}></td>
+            <td class="fw-medium text-break col-name">{{ r.name }}<div class="text-muted small fw-normal text-truncate" style="max-width:260px">{{ r.sample }}</div></td>
+            <td><code>{{ r.dtype }}</code></td>
+            <td><span class="badge text-bg-{{ 'primary' if r.kind == 'numeric' else 'info' if r.kind == 'categorical' else 'secondary' }}">{{ r.kind }}</span></td>
+            <td class="text-end">{{ r.unique|num }}</td>
+            <td>
+              <div class="progress" style="height:8px" title="{{ r.missing|num }} missing"><div class="progress-bar {{ 'bg-danger' if r.missing_pct > threshold else 'bg-warning' }}" style="width:{{ r.missing_pct }}%"></div></div>
+              <div class="small text-muted">{{ '%.1f'|format(r.missing_pct) }}%</div>
+            </td>
+            <td class="small">
+              {% if r.issue %}<span class="badge text-bg-warning" title="{{ r.issue.reason }}">{{ r.issue.reason }}</span>{% endif %}
+              {% for f in r.flags %}<span class="badge text-bg-light border">{{ f }}</span>{% endfor %}
+              {% if r.drop %}<span class="badge text-bg-danger">high null</span>{% endif %}
+            </td>
+            <td>
+              <select class="form-select form-select-sm" name="type_{{ r.idx }}">
+                {% for opt, lbl in [('keep','Keep as is'),('numeric','Numerical'),('categorical','Categorical'),('datetime','Datetime'),('boolean','Boolean (yes/no)')] %}
+                <option value="{{ opt }}" {% if r.convert == opt %}selected{% endif %}>{{ lbl }}{% if r.issue and r.issue.convert == opt %} ★{% endif %}</option>
+                {% endfor %}
+              </select>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="form-check mb-4">
+    <input class="form-check-input" type="checkbox" id="dd" name="drop_duplicates" {% if summary.duplicates %}{% endif %}>
+    <label class="form-check-label" for="dd">Remove {{ summary.duplicates|num }} duplicate row(s)</label>
+  </div>
+
+  <div class="d-flex justify-content-between">
+    <a class="btn btn-light" href="{{ url_for('upload') }}">Start over</a>
+    <button class="btn btn-primary">Save cleaned snapshot &amp; continue <i class="bi bi-arrow-right"></i></button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+  document.getElementById('colFilter').addEventListener('input', function () {
+    var q = this.value.toLowerCase();
+    document.querySelectorAll('#colTable tbody tr').forEach(function (tr) {
+      tr.style.display = tr.querySelector('.col-name').textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+  document.getElementById('clearDrops').addEventListener('click', function () {
+    document.querySelectorAll('.drop-box').forEach(function (b) { b.checked = false; b.closest('tr').classList.remove('table-warning'); });
+  });
+  document.querySelectorAll('.drop-box').forEach(function (b) {
+    b.addEventListener('change', function () { b.closest('tr').classList.toggle('table-warning', b.checked); });
+  });
+</script>
+{% endblock %}

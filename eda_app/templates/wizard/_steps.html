@@ -1,0 +1,8 @@
+<ol class="wizard-steps mb-4">
+  {% for s in wizard_steps %}
+    <li class="{% if loop.index0 < current %}done{% elif loop.index0 == current %}active{% endif %}">
+      <span class="dot">{% if loop.index0 < current %}<i class="bi bi-check-lg"></i>{% else %}{{ loop.index }}{% endif %}</span>
+      <span class="lbl">{{ s }}</span>
+    </li>
+  {% endfor %}
+</ol>

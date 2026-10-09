@@ -1,0 +1,26 @@
+# Secrets and local environment
+.secret_key
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+venv/
+.venv/
+
+# Uploaded datasets, generated reports, and local registry
+/uploads/*
+!/uploads/.gitkeep
+/reports/*
+!/reports/.gitkeep
+/metadata.json
+/metadata.json.corrupt
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

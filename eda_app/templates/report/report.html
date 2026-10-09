@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ meta.title }} - EDA report</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --ink:#1f2933; --muted:#6b7280; --line:#e5e7eb; --accent:#2f6fdb; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--ink); line-height:1.5; }
+  nav { position:fixed; top:0; left:0; bottom:0; width:230px; background:#111827; color:#d1d5db; overflow:auto; padding:18px 0; }
+  nav h2 { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:#9ca3af; margin:0 18px 10px; }
+  nav a { display:block; color:#d1d5db; text-decoration:none; padding:6px 18px; font-size:14px; }
+  nav a:hover { background:#1f2937; color:#fff; }
+  main { margin-left:230px; padding:28px 34px 60px; max-width:1250px; }
+  header h1 { margin:0 0 4px; font-size:26px; }
+  .muted { color:var(--muted); font-size:13px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:20px 24px; margin:22px 0; }
+  section > h2 { margin-top:0; font-size:20px; border-bottom:2px solid var(--line); padding-bottom:8px; }
+  h3 { font-size:16px; margin:22px 0 8px; } h4 { font-size:14px; margin:14px 0 6px; }
+  .kpis { display:flex; flex-wrap:wrap; gap:12px; margin:10px 0 6px; }
+  .kpi { flex:1 1 140px; background:#f9fafb; border:1px solid var(--line); border-radius:8px; padding:10px 14px; }
+  .kpi b { display:block; font-size:20px; } .kpi span { font-size:12px; color:var(--muted); }
+  .tblwrap { overflow-x:auto; margin:8px 0 14px; max-width:100%; }
+  table.tbl { border-collapse:collapse; font-size:12.5px; width:auto; }
+  table.tbl th, table.tbl td { padding:5px 10px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
+  table.tbl th:first-child, table.tbl td:first-child { text-align:left; position:sticky; left:0; background:#fff; }
+  table.tbl thead th { background:#f3f4f6; position:sticky; top:0; }
+  table.feat td:last-child, table.feat td:nth-child(3), table.feat td:nth-child(8) { text-align:left; white-space:normal; min-width:180px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(380px,1fr)); gap:16px; }
+  .grid figure { margin:0; border:1px solid var(--line); border-radius:8px; padding:8px; text-align:center; }
+  img { max-width:100%; height:auto; }
+  .note { background:#eff6ff; border-left:4px solid var(--accent); padding:8px 12px; border-radius:4px; font-size:13px; margin:10px 0; }
+  .warn { background:#fff7ed; border-left-color:#f59e0b; }
+  .pair { border:1px solid var(--line); border-radius:8px; padding:12px 16px; margin:14px 0; }
+  .pair h3 { margin-top:0; } .tag { display:inline-block; font-size:11px; background:#e0e7ff; color:#3730a3; border-radius:4px; padding:1px 7px; margin-left:6px; vertical-align:middle; }
+  .cols2 { display:flex; flex-wrap:wrap; gap:18px; align-items:flex-start; }
+  ul.log { margin:6px 0 0 18px; padding:0; font-size:14px; }
+  @media (max-width:860px){ nav{display:none} main{margin-left:0; padding:16px} }
+  @media print { nav{display:none} main{margin:0} section{break-inside:avoid-page} }
+</style>
+</head>
+<body>
+<nav>
+  <h2>Contents</h2>
+  <a href="#overview">1. Overview</a>
+  <a href="#types">2. Column types</a>
+  <a href="#missing">3. Missing values</a>
+  <a href="#cleaning">4. Cleaning applied</a>
+  <a href="#univariate">5. Univariate</a>
+  <a href="#bivariate">6. Bivariate</a>
+  <a href="#multivariate">7. Pair plot</a>
+  <a href="#correlation">8. Correlation</a>
+  <a href="#outliers">9. Outliers</a>
+  <a href="#features">10. Feature profiling</a>
+  <a href="#profiling">11. ydata-profiling</a>
+</nav>
+<main>
+<header>
+  <h1>{{ meta.title }}</h1>
+  <div class="muted">{{ meta.filename }}{% if meta.sheet %} · sheet “{{ meta.sheet }}”{% endif %} · generated {{ generated_at }}</div>
+  {% if plot_note %}<div class="note">{{ plot_note }}</div>{% endif %}
+</header>
+
+<section id="overview">
+  <h2>1. Dataset overview</h2>
+  <h4>Original data</h4>
+  <div class="kpis">
+    <div class="kpi"><b>{{ '{:,}'.format(raw_summary.rows) }}</b><span>rows</span></div>
+    <div class="kpi"><b>{{ '{:,}'.format(raw_summary.cols) }}</b><span>columns</span></div>
+    <div class="kpi"><b>{{ raw_summary.n_numeric }} / {{ raw_summary.n_categorical }} / {{ raw_summary.n_datetime }}</b><span>numerical / categorical / datetime</span></div>
+    <div class="kpi"><b>{{ '{:,}'.format(raw_summary.duplicates) }}</b><span>duplicate rows</span></div>
+    <div class="kpi"><b>{{ raw_summary.missing_pct }}%</b><span>missing cells</span></div>
+    <div class="kpi"><b>{{ raw_summary.memory_mb }} MB</b><span>memory</span></div>
+  </div>
+  <h4>After cleaning</h4>
+  <div class="kpis">
+    <div class="kpi"><b>{{ '{:,}'.format(clean_summary.rows) }}</b><span>rows</span></div>
+    <div class="kpi"><b>{{ '{:,}'.format(clean_summary.cols) }}</b><span>columns</span></div>
+    <div class="kpi"><b>{{ clean_summary.n_numeric }} / {{ clean_summary.n_categorical }} / {{ clean_summary.n_datetime }}</b><span>numerical / categorical / datetime</span></div>
+    <div class="kpi"><b>{{ clean_summary.missing_pct }}%</b><span>missing cells</span></div>
+  </div>
+  <h4>First 10 rows (original)</h4>
+  <div class="tblwrap">{{ head_html|safe }}</div>
+</section>
+
+<section id="types">
+  <h2>2. Column classification &amp; data types</h2>
+  <p class="muted">Types after the corrections you approved.</p>
+  <div class="tblwrap">{{ types_html|safe }}</div>
+</section>
+
+<section id="missing">
+  <h2>3. Missing values</h2>
+  {% if missing_plot %}<img src="data:image/png;base64,{{ missing_plot }}" alt="Missing values">{% else %}<p>No missing values in the original data. 🎉</p>{% endif %}
+  {% if missing_plot %}<div class="tblwrap">{{ missing_html|safe }}</div>{% endif %}
+  <h4>High-null columns (&gt; {{ null_threshold|int }}% missing)</h4>
+  {% if high_null %}<p>{{ high_null|join(', ') }}</p>{% else %}<p class="muted">None.</p>{% endif %}
+</section>
+
+<section id="cleaning">
+  <h2>4. Cleaning decisions applied</h2>
+  <ul class="log">{% for l in clean_log %}<li>{{ l }}</li>{% endfor %}</ul>
+  <p class="muted">The cleaned snapshot is available as <code>cleaned_dataset.csv</code> from the report page.</p>
+</section>
+
+<section id="univariate">
+  <h2>5. Univariate analysis</h2>
+  <h3>Numerical columns</h3>
+  {% if num_stats_html %}
+    <div class="tblwrap">{{ num_stats_html|safe }}</div>
+    <div class="grid">{% for p in num_plots %}<figure><img src="data:image/png;base64,{{ p.img }}" alt="{{ p.name }}"></figure>{% endfor %}</div>
+    {% if n_num_unplotted %}<div class="note">Plots are shown for the first {{ num_plots|length }} numerical columns; {{ n_num_unplotted }} more appear only in the statistics table.</div>{% endif %}
+  {% else %}<p class="muted">No numerical columns.</p>{% endif %}
+  <h3>Categorical columns</h3>
+  {% if cat_summary_html %}
+    <div class="tblwrap">{{ cat_summary_html|safe }}</div>
+    <div class="grid">
+    {% for c in cat_details %}<figure>{% if c.plot %}<img src="data:image/png;base64,{{ c.plot }}" alt="{{ c.name }}">{% else %}<strong>{{ c.name }}</strong>{% endif %}
+      <div class="tblwrap">{{ c.table|safe }}</div></figure>{% endfor %}
+    </div>
+  {% else %}<p class="muted">No categorical columns.</p>{% endif %}
+  {% if dt_html %}<h3>Datetime columns</h3><div class="tblwrap">{{ dt_html|safe }}</div>{% endif %}
+</section>
+
+<section id="bivariate">
+  <h2>6. Bivariate analysis</h2>
+  {% if not bivariate %}<p class="muted">No column pairs were selected.</p>{% endif %}
+  {% for b in bivariate %}
+  <div class="pair">
+    <h3>{{ b.x }} × {{ b.y }} <span class="tag">{{ b.label }}</span></h3>
+    {% if b.note %}<div class="note">{{ b.note }}</div>{% endif %}
+    <div class="cols2">
+      {% if b.plot %}<div><img src="data:image/png;base64,{{ b.plot }}" alt="{{ b.x }} vs {{ b.y }}"></div>{% endif %}
+      <div>
+        {% if b.stats_html %}<h4>Statistics</h4><div class="tblwrap">{{ b.stats_html|safe }}</div>{% endif %}
+        {% if b.table_html %}<h4>{{ 'Group summary' if b.kind == 'num_cat' else 'Cross-tabulation (counts)' }}</h4><div class="tblwrap">{{ b.table_html|safe }}</div>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<section id="multivariate">
+  <h2>7. Multivariate analysis - pair plot</h2>
+  {% if pairplot %}
+    <p class="muted">Columns: {{ pairplot_cols|join(', ') }}. Up to 2,000 randomly sampled complete rows.</p>
+    <img src="data:image/png;base64,{{ pairplot }}" alt="Pair plot">
+  {% else %}<p class="muted">No pair plot was requested (needs at least two numerical columns).</p>{% endif %}
+</section>
+
+<section id="correlation">
+  <h2>8. Correlation analysis</h2>
+  {% if corr.pearson_plot %}
+    {% if corr.heatmap_note %}<div class="note">{{ corr.heatmap_note }}</div>{% endif %}
+    <div class="cols2"><div><img src="data:image/png;base64,{{ corr.pearson_plot }}" alt="Pearson"></div>
+    <div><img src="data:image/png;base64,{{ corr.spearman_plot }}" alt="Spearman"></div></div>
+    <h3>Strongest pairs</h3><div class="tblwrap">{{ corr.top_pairs|safe }}</div>
+    <h3>Highly correlated pairs (|r| ≥ {{ corr.threshold }})</h3>
+    {% if corr.n_high %}<div class="note warn">{{ corr.n_high }} pair(s) exceed the threshold - consider removing redundant features.</div>
+      <div class="tblwrap">{{ corr.high_pairs|safe }}</div>
+    {% else %}<p class="muted">None.</p>{% endif %}
+    {% if corr.pearson_html %}<h3>Pearson matrix</h3><div class="tblwrap">{{ corr.pearson_html|safe }}</div>{% endif %}
+  {% else %}<p class="muted">At least two numerical columns with variation are needed for correlations.</p>{% endif %}
+  {% if corr.cramers_plot %}<h3>Categorical association</h3><img src="data:image/png;base64,{{ corr.cramers_plot }}" alt="Cramér's V">{% endif %}
+</section>
+
+<section id="outliers">
+  <h2>9. Outlier analysis</h2>
+  {% if outlier_summary_html %}
+    <h3>Detection summary (IQR 1.5× and Z-score 3 defaults)</h3>
+    <div class="tblwrap">{{ outlier_summary_html|safe }}</div>
+    <h3>Treatment</h3>
+    <p>Method: <b>{{ 'IQR rule' if outlier_method == 'iqr' else 'Z-score' }}</b> ({{ outlier_param }}) ·
+       Action: <b>{{ {'flag':'report only','cap':'capped (winsorised)','remove':'rows removed'}[outlier_action] }}</b>
+       {% if outlier_action == 'remove' %}· <b>{{ '{:,}'.format(outlier_removed) }}</b> row(s) removed (final: {{ '{:,}'.format(final_shape[0]) }} rows){% endif %}</p>
+    {% if outlier_details_html %}<div class="tblwrap">{{ outlier_details_html|safe }}</div>{% endif %}
+    {% if outlier_images %}<div class="grid">{% for o in outlier_images %}<figure><img src="data:image/png;base64,{{ o.img }}" alt="{{ o.name }}"></figure>{% endfor %}</div>{% endif %}
+    {% if has_final %}<p class="muted">Dataset after treatment: <code>final_dataset.csv</code>.</p>{% endif %}
+  {% else %}<p class="muted">No numerical columns suitable for outlier analysis.</p>{% endif %}
+</section>
+
+<section id="features">
+  <h2>10. Feature profiling</h2>
+  <p class="muted">Computed on the final dataset (after outlier treatment). Recommendations are heuristics to guide preprocessing.</p>
+  <div class="tblwrap">{{ feature_html|safe }}</div>
+</section>
+
+<section id="profiling">
+  <h2>11. ydata-profiling</h2>
+  {% if has_profile %}<p>{{ profile_note }} Open the <b>ydata-profiling</b> tab on the report page for the full interactive profile.</p>
+  {% elif profile_note %}<div class="note warn">{{ profile_note }}</div>
+  {% else %}<p class="muted">Skipped by request.</p>{% endif %}
+</section>
+</main>
+</body>
+</html>

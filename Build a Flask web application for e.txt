@@ -1,0 +1,39 @@
+Build a Flask web application for exploratory data analysis (EDA) that allows users to upload CSV or Excel files, generates automated profiling reports using ydata-profiling, and provides a web interface to view and manage these reports. Key features should include:
+
+- File upload functionality for CSV, XLS, XLSX files (max 100MB)
+- Automatic EDA report generation using ydata-profiling or any other library which can support larger dataset types                         with explorative mode 
+Approach to build this Automated EDA tool:
+Step 1: Import Required Libraries
+Step 2: Load Dataset
+Step 3: Read Available Sheets (For Excel) , Ask user to choose sheet Name
+Step 4: Initial Dataset Summary
+Step 5: Basic Dataset Information total rows, total column
+Step 6: Classify Columns into Numerical and categorical
+Step 7: Verify Incorrect Data Types
+Step 8: Missing Value Analysis
+Step 9: Identify High Null Columns
+Step 10: User Decision for Removal
+Step 12: Save Cleaned Dataset Snapshot
+Step 13: Start Actual Automated EDA
+Step 14: For numerical Columns find all univariates stats
+Step 15: Bivariate analysis, give user option to choose column names 
+Step 16: Numerical Vs Numerical, Numerical vs Categorical, Categorical Vs Categorical
+Step17: Multivariate Analysis—Pair Plot 
+Step 18: Correlation matrix, Correlation Heatmap
+Step 19: Outlier analysis and removal
+Step 20: Feature profiling
+Step 21:HTML Report Generation
+- Report storage with metadata (title, filename, upload date, rows, columns, file size, type)
+- Dashboard listing all reports with summary statistics (total reports, rows, columns)
+- Individual report viewing in an embedded iframe
+- Report deletion with confirmation
+- Bootstrap 5 styling with responsive design
+- Proper error handling and flash messages
+
+Folder structure: templates/, static/, uploads/, reports/, with metadata.json for persistence
+Use these packages: Flask>=2.0, pandas>=1.5, ydata-profiling>=4.0, openpyxl>=3.0, xlrd>=2.0. Include HTML templates for index (dashboard), upload form, report view, and base layout. Ensure the app runs on host 0.0.0.0 port 8501 in debug mode.
+`
+
+
+
+
